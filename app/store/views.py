@@ -44,11 +44,11 @@ class ParseLocationView(APIView):
     
     def post(self, request):
         # СДЕЛАТЬ ОБРАБОТКУ ОШИБОК
-        # ПРОВЕРИТЬ SHOP_LIST НА ДУБЛИКАТЫ
-        # ЕСЛИ ВВЕДЕНО НЕКОРРЕКТНОЕ НАЗВАНИЕ
-        # ЕСЛИ ПРИШЁЛ НЕУСПЕШНЫЙ ОТВЕТ ПРИ ЗАПРОСЕ
-        # ЕСЛИ ОШИБКА ВОЗНИКЛА ВО ВРЕМЯ ПАРСИНГА (НЕ ТОТ КЛАСС И Т.Д.)
-        # протестировать различные ключи запросов (Apple, Apple X, note 9)
+        # ПРОВЕРИТЬ SHOP_LIST НА ДУБЛИКАТЫ +
+        # ЕСЛИ ВВЕДЕНО НЕКОРРЕКТНОЕ НАЗВАНИЕ -
+        # ЕСЛИ ПРИШЁЛ НЕУСПЕШНЫЙ ОТВЕТ ПРИ ЗАПРОСЕ -
+        # ЕСЛИ ОШИБКА ВОЗНИКЛА ВО ВРЕМЯ ПАРСИНГА (НЕ ТОТ КЛАСС И Т.Д.) -
+        # протестировать различные ключи запросов (Apple, Apple X, note 9) -
         # test_coord = { 
         #     'lat': 50.0062302,
         #     'lng': 36.2343553 
@@ -65,6 +65,7 @@ class ParseLocationView(APIView):
 
         shop_list = []
         shop_requests = []
+        dataShop = []
 
         for point in list_address:
             address = Address.objects.filter(id=point).values_list('shop_id_id')
@@ -73,8 +74,10 @@ class ParseLocationView(APIView):
         shop_list = list(set(shop_list))
         
         for shop_id in shop_list:
-            search_request = Shop.objects.filter(id=shop_id).values_list('search_request')
-            shop_info = [shop_id, search_request[0][0]]
+            search_shop = Shop.objects.filter(id=shop_id).values_list('search_request', 'name')
+            shop_info = [shop_id, search_shop[0][0]]
+            shop_info_filter = {'id':shop_id, 'label': search_shop[0][1]}
+            dataShop.append(shop_info_filter)
             shop_requests.append(tuple(shop_info))
         
         def call_url(shop):
@@ -82,16 +85,12 @@ class ParseLocationView(APIView):
             response = service_search_parser.parse_shop(shop[0], request_query)
             return response
 
-        def addition(Item):
-            return { 'id': Item }
-
         futures = [call_url(shop) for shop in shop_requests]
         flat_structure = list(itertools.chain.from_iterable(futures))
-        data_shop = list(map(addition, shop_list))
         
         main_data = {}
         main_data['Records'] = flat_structure
-        main_data['Shops'] = data_shop
+        main_data['Shops'] = dataShop
 
         return Response(main_data)
 
